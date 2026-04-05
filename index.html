@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AQI Bubble Chart</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Syne+Mono&family=Syne:wght@400;600&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:     #0d0f14;
+  --card:   #181c26;
+  --border: #252a38;
+  --text:   #e8eaf2;
+  --muted:  #5a607a;
+  --panel:  #13161e;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 20px 16px 32px;
+}
+
+/* ── OUTER WRAPPER ── */
+.outer {
+  width: 100%;
+  max-width: 1600px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── TOP BAR: all controls in one horizontal row that wraps ── */
+.topbar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  padding: 10px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 20px;
+}
+
+/* divider between groups */
+.bar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* each group is a labelled cluster */
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* year chips sit inline horizontally */
+.bar-group.chips-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* legend sits inline horizontally */
+.bar-group.legend-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+}
+
+/* ── CANVAS CARD ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 60px rgba(0,0,0,0.5);
+}
+
+canvas { display:block; width:100%; height:auto; }
+
+/* ── COMPONENT STYLES ── */
+.sec-label {
+  font-family: 'Syne Mono', monospace;
+  font-size: 0.5rem;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* mode toggle */
+.mode-row { display:flex; gap:3px; }
+.mode-btn {
+  font-family: 'Syne Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.16s;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mode-btn.active {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text);
+}
+
+/* play buttons */
+.play-row { display:flex; gap:5px; align-items:center; }
+.btn {
+  font-family: 'Syne Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.16s;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.btn:hover { border-color: rgba(255,255,255,0.28); }
+.btn.playing { background: #c0392b; border-color: #c0392b; color:#fff; }
+.btn-reset { color: var(--muted); }
+.btn-reset:hover { color: var(--text); }
+
+/* speed */
+.speed-row { display:flex; align-items:center; gap:6px; }
+.speed-row label {
+  font-family: 'Syne Mono', monospace;
+  font-size: 0.5rem; color: var(--muted);
+  letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+}
+input[type=range] {
+  width: 80px; -webkit-appearance:none;
+  height: 2px; background: var(--border); border-radius:2px; outline:none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:10px; height:10px;
+  border-radius:50%; background:var(--text); cursor:pointer;
+}
+
+/* year chips */
+.chip {
+  font-family: 'Syne Mono', monospace;
+  font-size: 0.6rem; letter-spacing: 0.05em;
+  padding: 4px 11px; border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  cursor: pointer; transition: all 0.16s;
+}
+.chip:hover { border-color:rgba(255,255,255,0.22); color:var(--text); }
+.chip.active-anim   { border-color:#60a5fa; color:#60a5fa; background:rgba(96,165,250,0.10); }
+.chip.active-static { background:var(--text); border-color:var(--text); color:#0d0f14; font-weight:700; }
+
+/* legend items */
+.sz-item { display:flex; align-items:center; gap:6px; }
+.sz-dot  { border-radius:50%; flex-shrink:0; }
+.sz-label {
+  font-family: 'Syne Mono', monospace;
+  font-size: 0.5rem; color: rgba(255,255,255,0.4);
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div class="outer">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+
+    <!-- Mode -->
+    <div class="bar-group">
+      <div class="sec-label">Mode</div>
+      <div class="mode-row">
+        <button class="mode-btn active" id="modeAnimate" onclick="setMode('animate')">Animated</button>
+        <button class="mode-btn" id="modeStatic" onclick="setMode('static')">Static</button>
+      </div>
+    </div>
+
+    <div class="bar-divider"></div>
+
+    <!-- Playback (animate only) -->
+    <div class="bar-group" id="animControls">
+      <div class="sec-label">Playback</div>
+      <div class="play-row">
+        <button class="btn" id="playBtn" onclick="togglePlay()">▶ Play</button>
+        <button class="btn btn-reset" onclick="resetAnim()">↺</button>
+      </div>
+    </div>
+
+    <!-- Speed (animate only) -->
+    <div class="bar-group" id="speedGroup">
+      <div class="sec-label">Speed</div>
+      <div class="speed-row">
+        <input type="range" id="speedSlider" min="200" max="1900" value="1000" oninput="updateSpeed(this.value)">
+      </div>
+    </div>
+
+    <div class="bar-divider" id="animDivider"></div>
+
+    <!-- Year chips -->
+    <div class="bar-group chips-group">
+      <div class="sec-label" style="margin-right:6px">Year</div>
+      <div id="yearChips" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"></div>
+    </div>
+
+    <div class="bar-divider"></div>
+
+    <!-- Legend -->
+    <div class="bar-group legend-group" id="legendItems"></div>
+
+  </div>
+
+  <!-- CANVAS -->
+  <div class="card">
+    <canvas id="chart"></canvas>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────
+const DATA = {
+  2021:[{m:1,aqi:348},{m:2,aqi:329},{m:3,aqi:250},{m:4,aqi:216},{m:5,aqi:135},{m:6,aqi:141},{m:7,aqi:112},{m:8,aqi:105},{m:9,aqi:70},{m:10,aqi:160},{m:11,aqi:373},{m:12,aqi:360}],
+  2022:[{m:1,aqi:287},{m:2,aqi:229},{m:3,aqi:219},{m:4,aqi:288},{m:5,aqi:251},{m:6,aqi:203},{m:7,aqi:85},{m:8,aqi:84},{m:9,aqi:90},{m:10,aqi:190},{m:11,aqi:310},{m:12,aqi:272}],
+  2023:[{m:1,aqi:295},{m:2,aqi:208},{m:3,aqi:164},{m:4,aqi:188},{m:5,aqi:174},{m:6,aqi:119},{m:7,aqi:79},{m:8,aqi:110},{m:9,aqi:95},{m:10,aqi:210},{m:11,aqi:335},{m:12,aqi:292}],
+  2024:[{m:1,aqi:293},{m:2,aqi:195},{m:3,aqi:168},{m:4,aqi:198},{m:5,aqi:238},{m:6,aqi:192},{m:7,aqi:86},{m:8,aqi:59},{m:9,aqi:94},{m:10,aqi:207},{m:11,aqi:351},{m:12,aqi:265}],
+  2025:[{m:1,aqi:268},{m:2,aqi:129},{m:3,aqi:359},{m:4,aqi:378},{m:5,aqi:362},{m:6,aqi:277},{m:7,aqi:97},{m:8,aqi:112},{m:9,aqi:101},{m:10,aqi:153},{m:11,aqi:221},{m:12,aqi:255}],
+};
+const YEARS = [2021,2022,2023,2024,2025];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const BANDS = [
+  { label:'Good',           range:'0–50',   min:0,   max:50,       hex:'#00E400', r:7  },
+  { label:'Moderate',       range:'51–100', min:51,  max:100,      hex:'#F4F43E', r:12 },
+  { label:'USG',            range:'101–150',min:101, max:150,      hex:'#FF7E00', r:18 },
+  { label:'Unhealthy',      range:'151–200',min:151, max:200,      hex:'#FF0000', r:24 },
+  { label:'Very Unhealthy', range:'201–300',min:201, max:300,      hex:'#8F3F97', r:31 },
+  { label:'Hazardous',      range:'301+',   min:301, max:Infinity, hex:'#7E0023', r:39 },
+];
+
+function getBand(aqi) { return BANDS.find(b => aqi >= b.min && aqi <= b.max) || BANDS[5]; }
+function getR(aqi) {
+  const base = getBand(aqi).r;
+  // Scale radius with canvas width: reference width 1360
+  const scale = Math.max(0.45, Math.min(1, W / 1360));
+  return base * scale;
+}
+function getColor(aqi){ return getBand(aqi).hex; }
+function hexA(hex, a) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ── CANVAS (responsive + high-DPI) ───────────────────────────────
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+let W = 1360, H = 560;
+const PAD = { top:36, right:24, bottom:50, left:50 };
+let PW = W - PAD.left - PAD.right;
+let PH = H - PAD.top - PAD.bottom;
+const Y_MIN = 0, Y_MAX = 430;
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = Math.round(rect.width);
+  // Maintain a sensible aspect ratio: wider = taller but cap it
+  H = Math.round(Math.min(Math.max(W * 0.5, 300), 620));
+  PW = W - PAD.left - PAD.right;
+  PH = H - PAD.top - PAD.bottom;
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(DPR, DPR);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+}
+
+// Initial size
+resizeCanvas();
+
+// Re-render on resize
+const ro = new ResizeObserver(() => { resizeCanvas(); render(); });
+ro.observe(canvas.parentElement);
+
+function xPos(mi) { return PAD.left + (mi / 11) * PW; }
+function yPos(v)  { return PAD.top + PH - ((v - Y_MIN) / (Y_MAX - Y_MIN)) * PH; }
+function lerp(a,b,t) { return a + (b-a)*t; }
+function easeInOut(t) { return t<0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+// ── STATE ────────────────────────────────────────────────────────
+let mode = 'animate';
+let currentYearIdx = 0;
+let animT = 0;
+let playing = false;
+let rafId = null;
+let lastTime = null;
+let speed = 1300;
+let staticYear = 2021;
+
+// ── BUILD LEGEND ─────────────────────────────────────────────────
+const legendDiv = document.getElementById('legendItems');
+// Add a label first
+const lgLabel = document.createElement('div');
+lgLabel.className = 'sec-label';
+lgLabel.style.marginRight = '8px';
+lgLabel.textContent = 'AQI Range';
+legendDiv.appendChild(lgLabel);
+
+BANDS.forEach(b => {
+  const dotD = Math.max(7, Math.round(b.r * 0.55));
+  const row = document.createElement('div');
+  row.className = 'sz-item';
+  row.innerHTML = `
+    <div class="sz-dot" style="width:${dotD}px;height:${dotD}px;min-width:${dotD}px;background:${hexA(b.hex,0.85)};"></div>
+    <span class="sz-label">${b.label} <span style="opacity:0.5">${b.range}</span></span>`;
+  legendDiv.appendChild(row);
+});
+
+// ── BUILD YEAR CHIPS ─────────────────────────────────────────────
+const chipsDiv = document.getElementById('yearChips');
+YEARS.forEach((y, i) => {
+  const c = document.createElement('button');
+  c.className = 'chip';
+  c.textContent = y;
+  c.id = `chip-${y}`;
+  c.onclick = () => {
+    if (mode === 'animate') {
+      stopAnim(); currentYearIdx = i; animT = 0;
+    } else {
+      staticYear = y;
+    }
+    syncChips(); render();
+  };
+  chipsDiv.appendChild(c);
+});
+
+function syncChips() {
+  YEARS.forEach((y, i) => {
+    const c = document.getElementById(`chip-${y}`);
+    c.classList.remove('active-anim','active-static');
+    if (mode === 'animate' && i === currentYearIdx) c.classList.add('active-anim');
+    if (mode === 'static'  && y === staticYear)     c.classList.add('active-static');
+  });
+}
+
+// ── MODE ─────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m; stopAnim();
+  const hide = m === 'static';
+  document.getElementById('animControls').style.display = hide ? 'none' : '';
+  document.getElementById('speedGroup').style.display   = hide ? 'none' : '';
+  document.getElementById('animDivider').style.display  = hide ? 'none' : '';
+  document.getElementById('modeAnimate').classList.toggle('active', m === 'animate');
+  document.getElementById('modeStatic').classList.toggle('active',  m === 'static');
+  if (m === 'animate') { currentYearIdx = 0; animT = 0; }
+  syncChips(); render();
+}
+
+// ── DRAW ─────────────────────────────────────────────────────────
+function drawGrid() {
+  BANDS.forEach(b => {
+    const hiC = Math.min(b.max === Infinity ? Y_MAX : b.max, Y_MAX);
+    const y1  = yPos(hiC);
+    const y2  = yPos(Math.max(b.min, Y_MIN));
+    ctx.fillStyle = hexA(b.hex, 0.09);
+    ctx.fillRect(PAD.left, y1, PW, y2 - y1);
+  });
+
+  ctx.setLineDash([3, 6]);
+  [50, 100, 150, 200, 300].forEach(v => {
+    const y = yPos(v);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left+PW, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '9px Syne Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(v, PAD.left - 6, y + 3);
+  });
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '9px Syne Mono, monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('0', PAD.left - 6, yPos(0) + 3);
+
+  MONTHS.forEach((mn, i) => {
+    const x = xPos(i);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, PAD.top+PH); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '11px Syne Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(mn, x, PAD.top + PH + 20);
+  });
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, PAD.top+PH);
+  ctx.lineTo(PAD.left+PW, PAD.top+PH);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.font = '9px Syne Mono, monospace';
+  ctx.save();
+  ctx.translate(11, PAD.top + PH/2);
+  ctx.rotate(-Math.PI/2); ctx.textAlign = 'center';
+  ctx.fillText('AQI', 0, 0);
+  ctx.restore();
+}
+
+function drawYearBg(yr, alpha) {
+  ctx.save();
+  ctx.font = `bold ${Math.floor(PH * 0.74)}px Archivo Black, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = `rgba(255,255,255,${(alpha ?? 1) * 0.04})`;
+  ctx.fillText(yr, PAD.left + PW/2, PAD.top + PH/2 + 10);
+  ctx.restore();
+}
+
+function drawTrail(mi, upToYearIdx, interpT) {
+  const pts = [];
+  for (let yi = 0; yi <= upToYearIdx; yi++) {
+    const d = DATA[YEARS[yi]]?.find(r => r.m === mi+1);
+    if (d) pts.push({ x: xPos(mi), y: yPos(d.aqi), aqi: d.aqi, yr: YEARS[yi] });
+  }
+  if (interpT > 0 && upToYearIdx < YEARS.length-1) {
+    const d1 = DATA[YEARS[upToYearIdx]]?.find(r => r.m === mi+1);
+    const d2 = DATA[YEARS[upToYearIdx+1]]?.find(r => r.m === mi+1);
+    if (d1 && d2) {
+      const et = easeInOut(Math.max(0, Math.min(1, interpT)));
+      pts.push({ x: xPos(mi), y: lerp(yPos(d1.aqi), yPos(d2.aqi), et), live: true });
+    }
+  }
+  if (pts.length < 2) return;
+  ctx.save();
+  ctx.setLineDash([2, 5]); ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke(); ctx.setLineDash([]);
+  pts.filter(p => !p.live).forEach((p, i) => {
+    const col = getColor(p.aqi);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.fillStyle = hexA(col, 0.4); ctx.fill();
+    ctx.strokeStyle = hexA(col, 0.75); ctx.lineWidth = 0.8; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.font = '7.5px Syne Mono, monospace'; ctx.textAlign = 'left';
+    ctx.fillText(p.yr, p.x + 5, p.y - 2);
+  });
+  ctx.restore();
+}
+
+function drawBubble(x, y, aqi, rOverride) {
+  const r = rOverride !== undefined ? rOverride : getR(aqi);
+  const col = getColor(aqi);
+
+  // Light-colored bands need dark text
+  const band = getBand(aqi);
+  const useDarkText = (band.hex === '#F4F43E' || band.hex === '#00E400');
+
+  ctx.save();
+
+  // Flat filled circle
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = hexA(col, 0.88);
+  ctx.fill();
+
+  // Crisp border
+  ctx.strokeStyle = hexA(col, 1);
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // AQI value label
+  if (r >= 14) {
+    ctx.fillStyle = useDarkText ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.95)';
+    ctx.font = `bold ${Math.min(r * 0.52, 12)}px Syne Mono, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(aqi), x, y);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.restore();
+}
+
+// Draw a smooth line connecting all bubble positions left to right
+function drawConnectingLine(positions) {
+  // positions: array of {x, y} in month order (some may be missing for 2025 partial)
+  const valid = positions.filter(p => p !== null);
+  if (valid.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(valid[0].x, valid[0].y);
+  for (let i = 1; i < valid.length; i++) {
+    // Smooth curve through points using quadratic control points
+    const prev = valid[i - 1];
+    const curr = valid[i];
+    const mx = (prev.x + curr.x) / 2;
+    ctx.bezierCurveTo(mx, prev.y, mx, curr.y, curr.x, curr.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#12151e'; ctx.fillRect(0, 0, W, H);
+  mode === 'static' ? renderStatic() : renderAnimate();
+}
+
+function renderStatic() {
+  drawYearBg(staticYear); drawGrid();
+  const upToIdx = YEARS.indexOf(staticYear);
+
+  // Draw trails first (behind bubbles)
+  MONTHS.forEach((_, mi) => {
+    const pts = [];
+    for (let yi = 0; yi <= upToIdx; yi++) {
+      const d = DATA[YEARS[yi]]?.find(r => r.m === mi+1);
+      if (d) pts.push({ x: xPos(mi), y: yPos(d.aqi), aqi: d.aqi, yr: YEARS[yi] });
+    }
+    // Need at least 2 pts to draw a trail line; but even 1 past-year point should draw ghost dot
+    if (pts.length < 1) return;
+
+    if (pts.length >= 2) {
+      ctx.save();
+      ctx.setLineDash([2,5]); ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Draw ghost dots for all years EXCEPT the selected year (last point)
+    pts.slice(0, -1).forEach(p => {
+      const col = getColor(p.aqi);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+      ctx.fillStyle = hexA(col, 0.38); ctx.fill();
+      ctx.strokeStyle = hexA(col, 0.7); ctx.lineWidth = 0.8; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.26)';
+      ctx.font = '7.5px Syne Mono, monospace'; ctx.textAlign = 'left';
+      ctx.fillText(p.yr, p.x + 5, p.y - 2);
+      ctx.restore();
+    });
+  });
+
+  // Draw connecting line through active bubbles
+  const staticLinePos = MONTHS.map((_, mi) => {
+    const d = (DATA[staticYear] || []).find(r => r.m === mi + 1);
+    return d ? { x: xPos(mi), y: yPos(d.aqi) } : null;
+  });
+  drawConnectingLine(staticLinePos.filter(p => p !== null));
+
+  // Draw active year bubbles on top of everything
+  (DATA[staticYear] || []).forEach(d => drawBubble(xPos(d.m-1), yPos(d.aqi), d.aqi));
+}
+
+function renderAnimate() {
+  const yi = currentYearIdx;
+  const t  = easeInOut(Math.max(0, Math.min(1, animT)));
+  const nextYi = Math.min(yi+1, YEARS.length-1);
+  drawYearBg(YEARS[yi], 1-t);
+  if (t > 0) drawYearBg(YEARS[nextYi], t);
+  drawGrid();
+  MONTHS.forEach((_, mi) => drawTrail(mi, yi, animT));
+
+  // Compute animated bubble positions for connecting line
+  const animPositions = MONTHS.map((_, mi) => {
+    const d1 = DATA[YEARS[yi]]?.find(r => r.m === mi + 1);
+    if (!d1) return null;
+    let by;
+    if (t > 0 && yi < YEARS.length - 1) {
+      const d2 = DATA[YEARS[nextYi]]?.find(r => r.m === mi + 1);
+      by = d2 ? lerp(yPos(d1.aqi), yPos(d2.aqi), t) : yPos(d1.aqi);
+    } else { by = yPos(d1.aqi); }
+    return { x: xPos(mi), y: by };
+  });
+  drawConnectingLine(animPositions.filter(p => p !== null));
+
+  MONTHS.forEach((_, mi) => {
+    const d1 = DATA[YEARS[yi]]?.find(r => r.m === mi+1);
+    if (!d1) return;
+    let by, baqi, br;
+    if (t > 0 && yi < YEARS.length-1) {
+      const d2 = DATA[YEARS[nextYi]]?.find(r => r.m === mi+1);
+      if (d2) {
+        by = lerp(yPos(d1.aqi), yPos(d2.aqi), t);
+        baqi = lerp(d1.aqi, d2.aqi, t);
+        br = lerp(getR(d1.aqi), getR(d2.aqi), t);
+      } else { by = yPos(d1.aqi); baqi = d1.aqi; br = getR(d1.aqi); }
+    } else { by = yPos(d1.aqi); baqi = d1.aqi; br = getR(d1.aqi); }
+    drawBubble(xPos(mi), by, baqi, br);
+  });
+  syncChips();
+}
+
+// ── ANIMATION LOOP ───────────────────────────────────────────────
+function animate(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = ts - lastTime; lastTime = ts;
+  animT += dt / speed;
+  if (animT >= 1) {
+    animT = 0; currentYearIdx++;
+    if (currentYearIdx >= YEARS.length - 1) {
+      // Loop back to start
+      currentYearIdx = 0; animT = 0;
+    }
+  }
+  render();
+  if (playing) rafId = requestAnimationFrame(animate);
+}
+
+function togglePlay() {
+  if (playing) { stopAnim(); return; }
+  startAnim();
+}
+function startAnim() {
+  playing = true; lastTime = null;
+  document.getElementById('playBtn').textContent = '⏸ Pause';
+  document.getElementById('playBtn').classList.add('playing');
+  rafId = requestAnimationFrame(animate);
+}
+function stopAnim() {
+  playing = false;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  const pb = document.getElementById('playBtn');
+  if (pb) { pb.textContent = '▶ Play'; pb.classList.remove('playing'); }
+}
+function resetAnim() {
+  stopAnim(); currentYearIdx = 0; animT = 0; syncChips(); render();
+}
+function updateSpeed(v) { speed = 2300 - parseInt(v); }
+
+// ── INIT ─────────────────────────────────────────────────────────
+setMode('animate');
+render();
+</script>
+</body>
+</html>
