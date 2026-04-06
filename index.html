@@ -9,7 +9,6 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 
 :root {
-  --bg:     #0d0f14;
   --card:   #181c26;
   --border: #252a38;
   --text:   #e8eaf2;
@@ -18,15 +17,11 @@
 }
 
 body {
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font-family: 'Syne', sans-serif;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 20px 16px 32px;
+  padding: 0;
+  margin: 0;
 }
 
 /* ── OUTER WRAPPER ── */
@@ -36,9 +31,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  margin: 0 auto;
 }
 
-/* ── TOP BAR: all controls in one horizontal row that wraps ── */
+/* ── TOP BAR: controls ── */
 .topbar {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -49,6 +45,19 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 20px;
+}
+
+/* ── BOTTOM BAR: legend ── */
+.bottombar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+  padding: 8px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
 }
 
 /* divider between groups */
@@ -75,21 +84,13 @@ body {
   flex-wrap: wrap;
 }
 
-/* legend sits inline horizontally */
-.bar-group.legend-group {
-  flex-direction: row;
-  align-items: center;
-  gap: 10px 14px;
-  flex-wrap: wrap;
-}
-
 /* ── CANVAS CARD ── */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 0 0 16px 16px;
+  border-top: none;
+  border-bottom: none;
   overflow: hidden;
-  box-shadow: 0 4px 60px rgba(0,0,0,0.5);
 }
 
 canvas { display:block; width:100%; height:auto; }
@@ -229,17 +230,15 @@ input[type=range]::-webkit-slider-thumb {
       <div id="yearChips" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"></div>
     </div>
 
-    <div class="bar-divider"></div>
-
-    <!-- Legend -->
-    <div class="bar-group legend-group" id="legendItems"></div>
-
   </div>
 
   <!-- CANVAS -->
   <div class="card">
     <canvas id="chart"></canvas>
   </div>
+
+  <!-- BOTTOM BAR: legend -->
+  <div class="bottombar" id="legendItems"></div>
 
 </div>
 
@@ -258,7 +257,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 const BANDS = [
   { label:'Good',           range:'0–50',   min:0,   max:50,       hex:'#00E400', r:7  },
   { label:'Moderate',       range:'51–100', min:51,  max:100,      hex:'#F4F43E', r:12 },
-  { label:'USG',            range:'101–150',min:101, max:150,      hex:'#FF7E00', r:18 },
+  { label:'Unhealthy for Sensitive Groups', range:'101–150',min:101, max:150,      hex:'#FF7E00', r:18 },
   { label:'Unhealthy',      range:'151–200',min:151, max:200,      hex:'#FF0000', r:24 },
   { label:'Very Unhealthy', range:'201–300',min:201, max:300,      hex:'#8F3F97', r:31 },
   { label:'Hazardous',      range:'301+',   min:301, max:Infinity, hex:'#7E0023', r:39 },
@@ -329,21 +328,22 @@ let staticYear = 2021;
 
 // ── BUILD LEGEND ─────────────────────────────────────────────────
 const legendDiv = document.getElementById('legendItems');
-// Add a label first
-const lgLabel = document.createElement('div');
+
+// "AQI Range" label
+const lgLabel = document.createElement('span');
 lgLabel.className = 'sec-label';
-lgLabel.style.marginRight = '8px';
+lgLabel.style.cssText = 'margin-right:10px;flex-shrink:0;align-self:center;';
 lgLabel.textContent = 'AQI Range';
 legendDiv.appendChild(lgLabel);
 
 BANDS.forEach(b => {
   const dotD = Math.max(7, Math.round(b.r * 0.55));
-  const row = document.createElement('div');
-  row.className = 'sz-item';
-  row.innerHTML = `
+  const item = document.createElement('div');
+  item.className = 'sz-item';
+  item.innerHTML = `
     <div class="sz-dot" style="width:${dotD}px;height:${dotD}px;min-width:${dotD}px;background:${hexA(b.hex,0.85)};"></div>
     <span class="sz-label">${b.label} <span style="opacity:0.5">${b.range}</span></span>`;
-  legendDiv.appendChild(row);
+  legendDiv.appendChild(item);
 });
 
 // ── BUILD YEAR CHIPS ─────────────────────────────────────────────
@@ -673,6 +673,7 @@ function updateSpeed(v) { speed = 2300 - parseInt(v); }
 // ── INIT ─────────────────────────────────────────────────────────
 setMode('animate');
 render();
+startAnim();
 </script>
 </body>
 </html>
