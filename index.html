@@ -4,9 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AQI Bubble Chart</title>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Syne+Mono&family=Syne:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-size: 12px;
+}
 
 :root {
   --card:   #181c26;
@@ -19,27 +25,22 @@
 body {
   background: transparent;
   color: var(--text);
-  font-family: 'Syne', sans-serif;
-  padding: 0;
-  margin: 0;
+  font-family: 'Outfit', sans-serif;
 }
 
 /* ── OUTER WRAPPER ── */
 .outer {
   width: 100%;
   max-width: 1600px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin: 0 auto;
+  height: 100%;
 }
 
 /* ── TOP BAR: controls ── */
 .topbar {
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: 16px 16px 0 0;
   padding: 10px 16px;
   display: flex;
   flex-wrap: wrap;
@@ -50,9 +51,6 @@ body {
 /* ── BOTTOM BAR: legend ── */
 .bottombar {
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 16px 16px;
   padding: 8px 16px;
   display: flex;
   flex-wrap: wrap;
@@ -87,18 +85,17 @@ body {
 /* ── CANVAS CARD ── */
 .card {
   background: var(--card);
-  border: 1px solid var(--border);
-  border-top: none;
-  border-bottom: none;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 canvas { display:block; width:100%; height:auto; }
 
 /* ── COMPONENT STYLES ── */
 .sec-label {
-  font-family: 'Syne Mono', monospace;
-  font-size: 0.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
   color: var(--muted);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -108,8 +105,8 @@ canvas { display:block; width:100%; height:auto; }
 /* mode toggle */
 .mode-row { display:flex; gap:3px; }
 .mode-btn {
-  font-family: 'Syne Mono', monospace;
-  font-size: 0.58rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
   letter-spacing: 0.04em;
   padding: 5px 10px;
   border-radius: 5px;
@@ -130,8 +127,8 @@ canvas { display:block; width:100%; height:auto; }
 /* play buttons */
 .play-row { display:flex; gap:5px; align-items:center; }
 .btn {
-  font-family: 'Syne Mono', monospace;
-  font-size: 0.58rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
   letter-spacing: 0.06em;
   padding: 5px 10px;
   border-radius: 5px;
@@ -151,8 +148,8 @@ canvas { display:block; width:100%; height:auto; }
 /* speed */
 .speed-row { display:flex; align-items:center; gap:6px; }
 .speed-row label {
-  font-family: 'Syne Mono', monospace;
-  font-size: 0.5rem; color: var(--muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; color: var(--muted);
   letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
 }
 input[type=range] {
@@ -166,8 +163,8 @@ input[type=range]::-webkit-slider-thumb {
 
 /* year chips */
 .chip {
-  font-family: 'Syne Mono', monospace;
-  font-size: 0.6rem; letter-spacing: 0.05em;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; letter-spacing: 0.05em;
   padding: 4px 11px; border-radius: 999px;
   border: 1px solid var(--border);
   background: transparent; color: var(--muted);
@@ -181,8 +178,8 @@ input[type=range]::-webkit-slider-thumb {
 .sz-item { display:flex; align-items:center; gap:6px; }
 .sz-dot  { border-radius:50%; flex-shrink:0; }
 .sz-label {
-  font-family: 'Syne Mono', monospace;
-  font-size: 0.5rem; color: rgba(255,255,255,0.4);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; color: rgba(255,255,255,0.4);
   white-space: nowrap;
 }
 </style>
@@ -218,7 +215,7 @@ input[type=range]::-webkit-slider-thumb {
     <div class="bar-group" id="speedGroup">
       <div class="sec-label">Speed</div>
       <div class="speed-row">
-        <input type="range" id="speedSlider" min="200" max="1900" value="1000" oninput="updateSpeed(this.value)">
+        <input type="range" id="speedSlider" min="200" max="1900" value="400" oninput="updateSpeed(this.value)">
       </div>
     </div>
 
@@ -290,8 +287,7 @@ const Y_MIN = 0, Y_MAX = 430;
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   W = Math.round(rect.width);
-  // Maintain a sensible aspect ratio: wider = taller but cap it
-  H = Math.round(Math.min(Math.max(W * 0.5, 300), 620));
+  H = Math.round(rect.height) || Math.round(Math.min(Math.max(W * 0.5, 300), 620));
   PW = W - PAD.left - PAD.right;
   PH = H - PAD.top - PAD.bottom;
   canvas.width  = Math.round(W * DPR);
@@ -323,7 +319,7 @@ let animT = 0;
 let playing = false;
 let rafId = null;
 let lastTime = null;
-let speed = 1300;
+let speed = 2000;
 let staticYear = 2021;
 
 // ── BUILD LEGEND ─────────────────────────────────────────────────
@@ -356,7 +352,7 @@ YEARS.forEach((y, i) => {
   c.onclick = () => {
     if (mode === 'animate') {
       stopAnim(); currentYearIdx = i; animT = 0;
-    } else {
+    } else if (mode === 'static') {
       staticYear = y;
     }
     syncChips(); render();
@@ -368,6 +364,9 @@ function syncChips() {
   YEARS.forEach((y, i) => {
     const c = document.getElementById(`chip-${y}`);
     c.classList.remove('active-anim','active-static');
+    c.style.borderColor = '';
+    c.style.color = '';
+    c.style.background = '';
     if (mode === 'animate' && i === currentYearIdx) c.classList.add('active-anim');
     if (mode === 'static'  && y === staticYear)     c.classList.add('active-static');
   });
@@ -376,13 +375,14 @@ function syncChips() {
 // ── MODE ─────────────────────────────────────────────────────────
 function setMode(m) {
   mode = m; stopAnim();
-  const hide = m === 'static';
-  document.getElementById('animControls').style.display = hide ? 'none' : '';
-  document.getElementById('speedGroup').style.display   = hide ? 'none' : '';
-  document.getElementById('animDivider').style.display  = hide ? 'none' : '';
-  document.getElementById('modeAnimate').classList.toggle('active', m === 'animate');
+  const isAnim = m === 'animate';
+  document.getElementById('animControls').style.display = isAnim ? '' : 'none';
+  document.getElementById('speedGroup').style.display   = isAnim ? '' : 'none';
+  document.getElementById('animDivider').style.display  = isAnim ? '' : 'none';
+  document.getElementById('modeAnimate').classList.toggle('active', isAnim);
   document.getElementById('modeStatic').classList.toggle('active',  m === 'static');
-  if (m === 'animate') { currentYearIdx = 0; animT = 0; }
+  document.querySelector('.bar-group.chips-group .sec-label').textContent = 'Year';
+  if (isAnim) { currentYearIdx = 0; animT = 0; }
   syncChips(); render();
 }
 
@@ -403,16 +403,16 @@ function drawGrid() {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left+PW, y); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.font = '9px Syne Mono, monospace';
+    ctx.font = '12px Syne Mono, monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(v, PAD.left - 6, y + 3);
+    ctx.fillText(v, PAD.left - 6, y + 4);
   });
   ctx.setLineDash([]);
 
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.font = '9px Syne Mono, monospace';
+  ctx.font = '12px Syne Mono, monospace';
   ctx.textAlign = 'right';
-  ctx.fillText('0', PAD.left - 6, yPos(0) + 3);
+  ctx.fillText('0', PAD.left - 6, yPos(0) + 4);
 
   MONTHS.forEach((mn, i) => {
     const x = xPos(i);
@@ -420,7 +420,7 @@ function drawGrid() {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, PAD.top+PH); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font = '11px Syne Mono, monospace';
+    ctx.font = '12px Syne Mono, monospace';
     ctx.textAlign = 'center';
     ctx.fillText(mn, x, PAD.top + PH + 20);
   });
@@ -434,7 +434,7 @@ function drawGrid() {
   ctx.stroke();
 
   ctx.fillStyle = 'rgba(255,255,255,0.18)';
-  ctx.font = '9px Syne Mono, monospace';
+  ctx.font = '12px Syne Mono, monospace';
   ctx.save();
   ctx.translate(11, PAD.top + PH/2);
   ctx.rotate(-Math.PI/2); ctx.textAlign = 'center';
@@ -444,7 +444,7 @@ function drawGrid() {
 
 function drawYearBg(yr, alpha) {
   ctx.save();
-  ctx.font = `bold ${Math.floor(PH * 0.74)}px Archivo Black, sans-serif`;
+  ctx.font = `bold ${Math.floor(PH * 0.74)}px Outfit, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = `rgba(255,255,255,${(alpha ?? 1) * 0.04})`;
   ctx.fillText(yr, PAD.left + PW/2, PAD.top + PH/2 + 10);
@@ -478,7 +478,7 @@ function drawTrail(mi, upToYearIdx, interpT) {
     ctx.fillStyle = hexA(col, 0.4); ctx.fill();
     ctx.strokeStyle = hexA(col, 0.75); ctx.lineWidth = 0.8; ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.font = '7.5px Syne Mono, monospace'; ctx.textAlign = 'left';
+    ctx.font = '12px Syne Mono, monospace'; ctx.textAlign = 'left';
     ctx.fillText(p.yr, p.x + 5, p.y - 2);
   });
   ctx.restore();
@@ -577,7 +577,7 @@ function renderStatic() {
       ctx.fillStyle = hexA(col, 0.38); ctx.fill();
       ctx.strokeStyle = hexA(col, 0.7); ctx.lineWidth = 0.8; ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.26)';
-      ctx.font = '7.5px Syne Mono, monospace'; ctx.textAlign = 'left';
+      ctx.font = '12px Syne Mono, monospace'; ctx.textAlign = 'left';
       ctx.fillText(p.yr, p.x + 5, p.y - 2);
       ctx.restore();
     });
